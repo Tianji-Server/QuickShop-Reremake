@@ -113,7 +113,7 @@ public class UpdateWatcher implements Listener {
                             player.sendMessage(ChatColor.GREEN + "---------------------------------------------------");
                             player.sendMessage(ChatColor.GREEN + notify);
                             player.sendMessage(ChatColor.GREEN + "Type command " + ChatColor.YELLOW + "/qs update" + ChatColor.GREEN + " or click the link below to update QuickShop :)");
-                            player.sendMessage(ChatColor.AQUA + " https://ci.codemc.io/job/Ghost-chu/job/QuickShop-Reremake-SNAPSHOT");
+                            player.sendMessage(ChatColor.AQUA + "https://ci.codemc.io/job/PotatoCraft-Studio/job/QuickShop-Reremake-SNAPSHOT");
                             player.sendMessage(ChatColor.GREEN + "---------------------------------------------------");
                         }
                     }
