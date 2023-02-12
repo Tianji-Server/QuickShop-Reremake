@@ -1,5 +1,5 @@
 /*
- * This file is a part of project QuickShop, the name is ShopModeratorChangedLog.java
+ * This file is a part of project QuickShop, the name is ShopStackingStatusChangeLog.java
  *  Copyright (C) PotatoCraft Studio and contributors
  *
  *  This program is free software: you can redistribute it and/or modify it
@@ -21,18 +21,17 @@ package org.maxgamer.quickshop.util.logging.container;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.maxgamer.quickshop.api.shop.ShopInfoStorage;
-import org.maxgamer.quickshop.shop.SimpleShopModerator;
+import org.maxgamer.quickshop.shop.ShopLoader;
 
 @AllArgsConstructor
 @Data
-public class ShopModeratorChangedLog implements ReadableLog {
+public class ShopStackingStatusChangeLog implements ReadableLog {
+
     private static int v = 1;
-    private ShopInfoStorage shop;
-    private SimpleShopModerator moderator;
+    private ShopLoader.ShopRawDatabaseInfo rawDatabaseInfo;
 
     @Override
     public String toReadableLog() {
-        return "Shop owner/staff at " + shop.getPosition() + " was changed, current moderator:" + moderator + ", shop raw data:" + shop.toJson();
+        return "Shop at " + rawDatabaseInfo.getWorld() + ", x=" + rawDatabaseInfo.getX() + "y=" + rawDatabaseInfo.getY() + " z=" + rawDatabaseInfo.getZ() + " stacking have been changed, data:" + rawDatabaseInfo;
     }
 }

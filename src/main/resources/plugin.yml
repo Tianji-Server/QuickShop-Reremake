@@ -58,7 +58,7 @@ softdepend:
   - Factions
   - ProtocolLib
   - LWC
-  - BlockHub
+  - BlocksHub
   - Lands
   - GriefPrevention
   - JulySafe
@@ -93,7 +93,6 @@ permissions:
       quickshop.create.changeprice: true
       quickshop.create.double: true
       quickshop.create.cmd: true
-      quickshop.transfer: true
       quickshop.find: true
       quickshop.fetchmessage: true
       quickshop.staff: true
@@ -270,4 +269,13 @@ permissions:
     default: op
   quickshop.purge:
     description: Permission to use /qs purge
+    default: op
+  quickshop.transfer:
+    description: Permission to use /qs transfer for transering selling shop
+    default: op
+  quickshop.transfer.other:
+    description: Permission to use /qs transfer for transering others shop to someone
+    default: op
+  quickshop.convertlog:
+    description: Permission to use /qs convertlog
     default: op

@@ -57,8 +57,15 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.logging.Level;
 
 
@@ -244,17 +251,16 @@ public class MsgUtil {
     public static void loadEnchi18n() {
         plugin.getLogger().info("Loading enchantments translations...");
         File enchi18nFile = new File(plugin.getDataFolder(), "enchi18n.yml");
+        YamlConfiguration defaultYaml = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(Objects.requireNonNull(plugin.getResource("enchi18n.yml")), StandardCharsets.UTF_8));
         if (!enchi18nFile.exists()) {
             plugin.getLogger().info("Creating enchi18n.yml");
-            plugin.saveResource("enchi18n.yml", false);
+            plugin.saveResource("enchi18n.yml", true);
         }
-        // Store it
         enchi18n = YamlConfiguration.loadConfiguration(enchi18nFile);
         enchi18n.options().copyDefaults(false);
-        YamlConfiguration enchi18nYAML =
-                YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(Objects.requireNonNull(plugin.getResource("enchi18n.yml")), StandardCharsets.UTF_8));
-        enchi18n.setDefaults(enchi18nYAML);
+        enchi18n.setDefaults(defaultYaml);
+        // Store it
         Util.parseColours(enchi18n);
         Enchantment[] enchsi18n = Enchantment.values();
         for (Enchantment ench : enchsi18n) {
@@ -281,17 +287,17 @@ public class MsgUtil {
     public static void loadItemi18n() {
         plugin.getLogger().info("Loading items translations...");
         File itemi18nFile = new File(plugin.getDataFolder(), "itemi18n.yml");
+        YamlConfiguration defaultYaml = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(Objects.requireNonNull(plugin.getResource("itemi18n.yml")), StandardCharsets.UTF_8));
         if (!itemi18nFile.exists()) {
             plugin.getLogger().info("Creating itemi18n.yml");
-            plugin.saveResource("itemi18n.yml", false);
+            plugin.saveResource("itemi18n.yml", true);
         }
-        // Store it
         itemi18n = YamlConfiguration.loadConfiguration(itemi18nFile);
         itemi18n.options().copyDefaults(false);
-        YamlConfiguration itemi18nYAML =
-                YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(Objects.requireNonNull(plugin.getResource("itemi18n.yml")), StandardCharsets.UTF_8));
-        itemi18n.setDefaults(itemi18nYAML);
+        itemi18n.setDefaults(defaultYaml);
+
+        // Store it
         Util.parseColours(itemi18n);
         Material[] itemsi18n = Material.values();
         for (Material material : itemsi18n) {
@@ -317,17 +323,16 @@ public class MsgUtil {
     public static void loadPotioni18n() {
         plugin.getLogger().info("Loading potions translations...");
         File potioni18nFile = new File(plugin.getDataFolder(), "potioni18n.yml");
+        YamlConfiguration defaultYaml = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(Objects.requireNonNull(plugin.getResource("potioni18n.yml")), StandardCharsets.UTF_8));
         if (!potioni18nFile.exists()) {
             plugin.getLogger().info("Creating potioni18n.yml");
-            plugin.saveResource("potioni18n.yml", false);
+            plugin.saveResource("potioni18n.yml", true);
         }
-        // Store it
         potioni18n = YamlConfiguration.loadConfiguration(potioni18nFile);
         potioni18n.options().copyDefaults(false);
-        YamlConfiguration potioni18nYAML =
-                YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(Objects.requireNonNull(plugin.getResource("potioni18n.yml")), StandardCharsets.UTF_8));
-        potioni18n.setDefaults(potioni18nYAML);
+        potioni18n.setDefaults(defaultYaml);
+        // Store it
         Util.parseColours(potioni18n);
         for (PotionEffectType potion : PotionEffectType.values()) {
             if (potion == null) {
@@ -360,7 +365,7 @@ public class MsgUtil {
                 if (Util.isUUID(owner)) {
                     ownerUUID = UUID.fromString(owner);
                 } else {
-                    ownerUUID = PlayerFinder.findUUIDByName(owner);
+                    ownerUUID = PlayerFinder.findUUIDByName(owner, true, true);
                 }
                 String message = rs.getString("message");
                 List<ShopTransactionMessageContainer> msgs = OUTGOING_MESSAGES.computeIfAbsent(ownerUUID, k -> new LinkedList<>());
@@ -385,7 +390,7 @@ public class MsgUtil {
             return; // Ignore unlimited shops messages.
         }
         Util.debugLog(shopTransactionMessage.getMessage(null));
-        OfflinePlayer p = Bukkit.getOfflinePlayer(uuid);
+        OfflinePlayer p = PlayerFinder.findOfflinePlayerByUUID(uuid);
         if (!p.isOnline()) {
             List<ShopTransactionMessageContainer> msgs = OUTGOING_MESSAGES.getOrDefault(uuid, new LinkedList<>());
             msgs.add(shopTransactionMessage);
@@ -422,7 +427,7 @@ public class MsgUtil {
         if (shop.isUnlimited() && plugin.getConfig().getBoolean("shop.ignore-unlimited-shop-messages")) {
             return; // Ignore unlimited shops messages.
         }
-        OfflinePlayer p = Bukkit.getOfflinePlayer(uuid);
+        OfflinePlayer p = PlayerFinder.findOfflinePlayerByUUID(uuid);
         if (!p.isOnline()) {
             List<ShopTransactionMessageContainer> msgs = OUTGOING_MESSAGES.getOrDefault(uuid, new LinkedList<>());
             msgs.add(shopTransactionMessageContainer);
@@ -487,7 +492,16 @@ public class MsgUtil {
                     plugin.text().of(sender, "controlpanel.setowner-hover").forLocale(),
                     "/qs setowner ");
         }
-
+        // Staff
+        if ((QuickShop.getPermissionManager().hasPermission(sender, "quickshop.staff") && shop.getOwner().equals(((OfflinePlayer) sender).getUniqueId()))
+                || QuickShop.getPermissionManager().hasPermission(sender, "quickshop.other.staff")) {
+            chatSheetPrinter.printSuggestedCmdLine(
+                    plugin.text().of(sender,
+                            "controlpanel.staff",
+                            shop.getStaffs().size()).forLocale(),
+                    plugin.text().of(sender, "command.description.staff").forLocale(),
+                    "/qs staff ");
+        }
 
         // Unlimited
         if (QuickShop.getPermissionManager().hasPermission(sender, "quickshop.unlimited")) {

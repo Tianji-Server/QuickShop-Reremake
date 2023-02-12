@@ -27,7 +27,6 @@ import de.leonhard.storage.internal.settings.ReloadSettings;
 import de.tr7zw.nbtapi.plugin.NBTAPI;
 import lombok.Getter;
 import lombok.Setter;
-import me.minebuilders.clearlag.Clearlag;
 import me.minebuilders.clearlag.listeners.ItemMergeListener;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
@@ -39,7 +38,12 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.entity.ItemSpawnEvent;
-import org.bukkit.plugin.*;
+import org.bukkit.plugin.InvalidDescriptionException;
+import org.bukkit.plugin.InvalidPluginException;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginDescriptionFile;
+import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -58,16 +62,36 @@ import org.maxgamer.quickshop.api.event.QSConfigurationReloadEvent;
 import org.maxgamer.quickshop.api.integration.IntegrateStage;
 import org.maxgamer.quickshop.api.integration.IntegrationManager;
 import org.maxgamer.quickshop.api.localization.text.TextManager;
-import org.maxgamer.quickshop.api.shop.*;
+import org.maxgamer.quickshop.api.shop.AbstractDisplayItem;
+import org.maxgamer.quickshop.api.shop.DisplayType;
+import org.maxgamer.quickshop.api.shop.ItemMatcher;
+import org.maxgamer.quickshop.api.shop.Shop;
+import org.maxgamer.quickshop.api.shop.ShopManager;
 import org.maxgamer.quickshop.chat.platform.minedown.BungeeQuickChat;
 import org.maxgamer.quickshop.command.SimpleCommandManager;
-import org.maxgamer.quickshop.database.*;
+import org.maxgamer.quickshop.database.AbstractDatabaseCore;
+import org.maxgamer.quickshop.database.DatabaseManager;
+import org.maxgamer.quickshop.database.MySQLCore;
+import org.maxgamer.quickshop.database.SQLiteCore;
+import org.maxgamer.quickshop.database.SimpleDatabaseHelper;
 import org.maxgamer.quickshop.economy.Economy_GemsEconomy;
 import org.maxgamer.quickshop.economy.Economy_TNE;
 import org.maxgamer.quickshop.economy.Economy_Vault;
 import org.maxgamer.quickshop.integration.SimpleIntegrationManager;
 import org.maxgamer.quickshop.integration.worldguard.WorldGuardIntegration;
-import org.maxgamer.quickshop.listener.*;
+import org.maxgamer.quickshop.listener.BlockListener;
+import org.maxgamer.quickshop.listener.ChatListener;
+import org.maxgamer.quickshop.listener.ChunkListener;
+import org.maxgamer.quickshop.listener.ClearLaggListener;
+import org.maxgamer.quickshop.listener.CustomInventoryListener;
+import org.maxgamer.quickshop.listener.DisplayProtectionListener;
+import org.maxgamer.quickshop.listener.EconomySetupListener;
+import org.maxgamer.quickshop.listener.InternalListener;
+import org.maxgamer.quickshop.listener.LockListener;
+import org.maxgamer.quickshop.listener.PlayerListener;
+import org.maxgamer.quickshop.listener.PluginListener;
+import org.maxgamer.quickshop.listener.ShopProtectionListener;
+import org.maxgamer.quickshop.listener.WorldListener;
 import org.maxgamer.quickshop.listener.worldedit.WorldEditAdapter;
 import org.maxgamer.quickshop.localization.text.SimpleTextManager;
 import org.maxgamer.quickshop.nonquickshopstuff.com.rylinaux.plugman.util.PluginUtil;
@@ -76,29 +100,62 @@ import org.maxgamer.quickshop.shop.ShopLoader;
 import org.maxgamer.quickshop.shop.ShopPurger;
 import org.maxgamer.quickshop.shop.SimpleShopManager;
 import org.maxgamer.quickshop.shop.VirtualDisplayItem;
+import org.maxgamer.quickshop.util.GameVersion;
+import org.maxgamer.quickshop.util.HttpUtil;
+import org.maxgamer.quickshop.util.JsonUtil;
+import org.maxgamer.quickshop.util.MsgUtil;
+import org.maxgamer.quickshop.util.PermissionChecker;
+import org.maxgamer.quickshop.util.PlayerFinder;
+import org.maxgamer.quickshop.util.ReflectFactory;
 import org.maxgamer.quickshop.util.Timer;
-import org.maxgamer.quickshop.util.*;
+import org.maxgamer.quickshop.util.Util;
 import org.maxgamer.quickshop.util.compatibility.SimpleCompatibilityManager;
 import org.maxgamer.quickshop.util.config.ConfigCommentUpdater;
 import org.maxgamer.quickshop.util.config.ConfigProvider;
 import org.maxgamer.quickshop.util.config.ConfigurationFixer;
-import org.maxgamer.quickshop.util.envcheck.*;
+import org.maxgamer.quickshop.util.envcheck.CheckResult;
+import org.maxgamer.quickshop.util.envcheck.EnvCheckEntry;
+import org.maxgamer.quickshop.util.envcheck.EnvironmentChecker;
+import org.maxgamer.quickshop.util.envcheck.ResultContainer;
+import org.maxgamer.quickshop.util.envcheck.ResultReport;
 import org.maxgamer.quickshop.util.matcher.item.BukkitItemMatcherImpl;
 import org.maxgamer.quickshop.util.matcher.item.QuickShopItemMatcherImpl;
 import org.maxgamer.quickshop.util.reload.ReloadManager;
 import org.maxgamer.quickshop.util.reporter.error.EmptyErrorReporter;
 import org.maxgamer.quickshop.util.reporter.error.IErrorReporter;
 import org.maxgamer.quickshop.util.reporter.error.RollbarErrorReporter;
-import org.maxgamer.quickshop.watcher.*;
+import org.maxgamer.quickshop.watcher.CalendarWatcher;
+import org.maxgamer.quickshop.watcher.DisplayAutoDespawnWatcher;
+import org.maxgamer.quickshop.watcher.DisplayDupeRemoverWatcher;
+import org.maxgamer.quickshop.watcher.DisplayWatcher;
+import org.maxgamer.quickshop.watcher.LogWatcher;
+import org.maxgamer.quickshop.watcher.OngoingFeeWatcher;
+import org.maxgamer.quickshop.watcher.ShopContainerWatcher;
+import org.maxgamer.quickshop.watcher.SignUpdateWatcher;
+import org.maxgamer.quickshop.watcher.TpsWatcher;
+import org.maxgamer.quickshop.watcher.UpdateWatcher;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.logging.Level;
 
 public class QuickShop extends JavaPlugin implements QuickShopAPI {
@@ -172,6 +229,7 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
      * The economy we hook into for transactions
      */
     @Getter
+    @Nullable
     private AbstractEconomy economy;
     /**
      * Whether or not to limit players shop amounts
@@ -230,13 +288,15 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
     @Deprecated
     private boolean enabledAsyncDisplayDespawn;
     @Getter
-    private Plugin blockHubPlugin;
+    private Plugin blocksHubPlugin;
     @Getter
     private Plugin lwcPlugin;
     @Getter
     private Cache shopCache;
     @Getter
     private boolean allowStack;
+    @Getter
+    private boolean includeOfflinePlayer;
     @Getter
     private EnvironmentChecker environmentChecker;
     @Getter
@@ -343,36 +403,58 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         // https://github.com/KaiKikuchi/QuickShop/issues/139
         if (getConfig().getBoolean("plugin.OpenInv")) {
             this.openInvPlugin = Bukkit.getPluginManager().getPlugin("OpenInv");
-            if (this.openInvPlugin != null) {
-                getLogger().info("Successfully loaded OpenInv support!");
+            if (this.openInvPlugin != null && openInvPlugin.isEnabled()) {
+                try {
+                    if (Util.verifyClassLoader(openInvPlugin) &&
+                            //To avoid class conflict, we load the class from its class loader
+                            openInvPlugin.getClass().getClassLoader().loadClass("com.lishid.openinv.IOpenInv").isInstance(openInvPlugin)) {
+                        getLogger().info("Successfully loaded OpenInv support!");
+                    } else {
+                        getLogger().info("Failed to load OpenInv support, this version is unsupported!");
+                    }
+                } catch (ClassNotFoundException e) {
+                    getLogger().info("Failed to find IOpenInv interface, this version is unsupported!");
+                }
             }
         }
         if (getConfig().getBoolean("plugin.PlaceHolderAPI")) {
             this.placeHolderAPI = Bukkit.getPluginManager().getPlugin("PlaceholderAPI");
-            if (this.placeHolderAPI != null) {
-                getLogger().info("Successfully loaded PlaceHolderAPI support!");
+            if (this.placeHolderAPI != null && placeHolderAPI.isEnabled()) {
+                if (Util.verifyClassLoader(placeHolderAPI) && Util.loadClassAndCheckName(placeHolderAPI, "me.clip.placeholderapi.PlaceholderAPIPlugin")) {
+                    getLogger().info("Successfully loaded PlaceHolderAPI support!");
+                } else {
+                    getLogger().info("Failed to load PlaceHolderAPI support, this version is unsupported!");
+                }
             }
         }
-        if (getConfig().getBoolean("plugin.BlockHub")) {
-            this.blockHubPlugin = Bukkit.getPluginManager().getPlugin("BlockHub");
-            if (this.blockHubPlugin != null) {
-                getLogger().info("Successfully loaded BlockHub support!");
+        if (getConfig().getBoolean("plugin.BlockHub.enable")) {
+            this.blocksHubPlugin = Bukkit.getPluginManager().getPlugin("BlocksHub");
+            if (this.blocksHubPlugin != null && blocksHubPlugin.isEnabled()) {
+                if (Util.verifyClassLoader(blocksHubPlugin) && Util.loadClassAndCheckName(blocksHubPlugin, "org.primesoft.blockshub.BlocksHubBukkit")) {
+                    getLogger().info("Successfully loaded BlockHub support!");
+                } else {
+                    getLogger().info("Failed to load BlockHub support, this version is unsupported!");
+                }
             }
         }
         if (getConfig().getBoolean("plugin.WorldEdit")) {
             //  GameVersion gameVersion = GameVersion.get(nmsVersion);
             this.worldEditPlugin = Bukkit.getPluginManager().getPlugin("WorldEdit");
-            if (this.worldEditPlugin != null) {
-                this.worldEditAdapter = new WorldEditAdapter(this, (WorldEditPlugin) this.worldEditPlugin);
-                this.worldEditAdapter.register();
-                getLogger().info("Successfully loaded WorldEdit support!");
+            if (this.worldEditPlugin != null && worldEditPlugin.isEnabled()) {
+                if (Util.verifyClassLoader(worldEditPlugin) && Util.loadClassAndCheckName(worldEditPlugin, "com.sk89q.worldedit.bukkit.WorldEditPlugin")) {
+                    this.worldEditAdapter = new WorldEditAdapter(this, (WorldEditPlugin) this.worldEditPlugin);
+                    this.worldEditAdapter.register();
+                    getLogger().info("Successfully loaded WorldEdit support!");
+                } else {
+                    getLogger().info("Failed to load WorldEdit support, this version is unsupported!");
+                }
             }
         }
 
         if (getConfig().getBoolean("plugin.LWC")) {
             this.lwcPlugin = Bukkit.getPluginManager().getPlugin("LWC");
-            if (this.lwcPlugin != null) {
-                if (Util.isMethodAvailable("com.griefcraft.lwc.LWC", "findProtection", org.bukkit.Location.class)) {
+            if (this.lwcPlugin != null && lwcPlugin.isEnabled()) {
+                if (Util.verifyClassLoader(lwcPlugin) && Util.loadClassAndCheckName(lwcPlugin, "com.griefcraft.lwc.LWCPlugin") && Util.isMethodAvailable("com.griefcraft.lwc.LWC", "findProtection", org.bukkit.Location.class)) {
                     getLogger().info("Successfully loaded LWC support!");
                 } else {
                     getLogger().warning("Unsupported LWC version, please make sure you are using the modern version of LWC!");
@@ -381,18 +463,21 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
             }
         }
         if (getConfig().getBoolean("plugin.NBTAPI")) {
-            if (Util.isClassAvailable("de.tr7zw.nbtapi.plugin.NBTAPI")) {
-                this.nbtapi = (NBTAPI) Bukkit.getPluginManager().getPlugin("NBTAPI");
-                if (this.nbtapi != null) {
+            Plugin nbtapi = Bukkit.getPluginManager().getPlugin("NBTAPI");
+            if (nbtapi != null && nbtapi.isEnabled()) {
+                if (Util.verifyClassLoader(nbtapi) && Util.loadClassAndCheckName(nbtapi, "de.tr7zw.nbtapi.plugin.NBTAPI") &&
+                        Util.isMethodAvailable(nbtapi.getClass(), "isCompatible")) {
+                    this.nbtapi = (NBTAPI) nbtapi;
                     if (!this.nbtapi.isCompatible()) {
+
                         getLogger().warning("NBTAPI plugin failed to loading, QuickShop NBTAPI support module has been disabled. Try update NBTAPI version to resolve the issue. (" + nbtapi.getDescription().getVersion() + ")");
                         this.nbtapi = null;
                     } else {
                         getLogger().info("Successfully loaded NBTAPI support!");
                     }
+                } else {
+                    getLogger().warning("NBTAPI plugin is invalid, QuickShop NBTAPI support module has been disabled. Try update NBTAPI version to resolve the issue.");
                 }
-            } else {
-                getLogger().warning("NBTAPI plugin is invalid, QuickShop NBTAPI support module has been disabled. Try update NBTAPI version to resolve the issue.");
             }
         }
         Bukkit.getPluginManager().registerEvents(this.compatibilityTool, this);
@@ -402,7 +487,7 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
             if (AbstractDisplayItem.getNowUsing() == DisplayType.VIRTUALITEM) {
                 getLogger().info("Using Virtual Item display, loading ProtocolLib support...");
                 Plugin protocolLibPlugin = Bukkit.getPluginManager().getPlugin("ProtocolLib");
-                if (protocolLibPlugin != null && protocolLibPlugin.isEnabled()) {
+                if (protocolLibPlugin != null && Util.verifyClassLoader(protocolLibPlugin) && protocolLibPlugin.isEnabled()) {
                     getLogger().info("Successfully loaded ProtocolLib support!");
                 } else {
                     getLogger().warning("Failed to load ProtocolLib support, fallback to real item display");
@@ -412,11 +497,11 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
             }
             if (AbstractDisplayItem.getNowUsing() == DisplayType.REALITEM) {
                 getLogger().warning("You're using Real Display system and that may cause your server lagg, switch to Virtual Display system if you can!");
-                if (Bukkit.getPluginManager().getPlugin("ClearLag") != null) {
+                Plugin clearLagPlugin = Bukkit.getPluginManager().getPlugin("ClearLag");
+                if (clearLagPlugin != null && Util.verifyClassLoader(clearLagPlugin)) {
                     try {
-                        Clearlag clearlag = (Clearlag) Bukkit.getPluginManager().getPlugin("ClearLag");
                         for (RegisteredListener clearLagListener : ItemSpawnEvent.getHandlerList().getRegisteredListeners()) {
-                            if (!clearLagListener.getPlugin().equals(clearlag)) {
+                            if (!clearLagListener.getPlugin().equals(clearLagPlugin)) {
                                 continue;
                             }
                             if (clearLagListener.getListener().getClass().equals(ItemMergeListener.class)) {
@@ -486,7 +571,7 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
                                 if (Util.isUUID(taxAccount)) {
                                     tax = PlayerFinder.findOfflinePlayerByUUID(UUID.fromString(taxAccount));
                                 } else {
-                                    tax = PlayerFinder.findOfflinePlayerByName((Objects.requireNonNull(taxAccount)));
+                                    tax = PlayerFinder.findOfflinePlayerByUUID(PlayerFinder.findUUIDByName(Objects.requireNonNull(taxAccount), true, true));
                                 }
                                 Economy_Vault vault = (Economy_Vault) economy;
                                 if (vault.isValid()) {
@@ -589,6 +674,7 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         this.priceChangeRequiresFee = this.getConfig().getBoolean("shop.price-change-requires-fee");
         this.displayItemCheckTicks = this.getConfig().getInt("shop.display-items-check-ticks");
         this.allowStack = this.getConfig().getBoolean("shop.allow-stacks");
+        this.includeOfflinePlayer = this.getConfig().getBoolean("include-offlineplayer-for-command");
         this.currency = this.getConfig().getString("currency");
         this.loggingLocation = this.getConfig().getInt("logging.location");
         if (StringUtils.isEmpty(this.currency)) {
@@ -711,10 +797,11 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         }
 
         Util.debugLog("Cleanup listeners...");
-
         HandlerList.unregisterAll(this);
         Util.debugLog("Unregistering plugin services...");
         getServer().getServicesManager().unregisterAll(this);
+        Util.debugLog("Shutdown okhttp client...");
+        HttpUtil.shutdown();
         Util.debugLog("Cleanup...");
         Util.debugLog("All shutdown work is finished.");
 
@@ -959,10 +1046,6 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
 
         signUpdateWatcher = new SignUpdateWatcher();
         shopContainerWatcher = new ShopContainerWatcher();
-        if (display && AbstractDisplayItem.getNowUsing() != DisplayType.VIRTUALITEM) {
-            displayDupeRemoverWatcher = new DisplayDupeRemoverWatcher();
-            timerTaskList.add(displayDupeRemoverWatcher.runTaskTimerAsynchronously(this, 0, 1));
-        }
         /* Load all shops. */
         shopLoader = new ShopLoader(this);
         shopLoader.loadShops();
@@ -979,7 +1062,6 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         new CustomInventoryListener(this).register();
         new ShopProtectionListener(this, this.shopCache).register();
         new PluginListener(this).register();
-        new EconomySetupListener(this).register();
         InternalListener internalListener = new InternalListener(this);
         internalListener.register();
 
@@ -1022,13 +1104,14 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         }
 
 
-        /* Delay the Ecoonomy system load, give a chance to let economy system regiser. */
+        /* Delay the Ecoonomy system load, give a chance to let economy system register. */
         /* And we have a listener to listen the ServiceRegisterEvent :) */
         Util.debugLog("Loading economy system...");
         new BukkitRunnable() {
             @Override
             public void run() {
                 loadEcon();
+                new EconomySetupListener(QuickShop.this).register();
             }
         }.runTaskLater(this, 1);
         Util.debugLog("Registering watchers...");
@@ -1066,6 +1149,11 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         this.shopPurger = new ShopPurger(this);
         if (getConfig().getBoolean("purge.at-server-startup")) {
             shopPurger.purge();
+        }
+        //Detect and do offline player name to uuid caching
+        OfflinePlayer[] offlinePlayers = getServer().getOfflinePlayers();
+        if (offlinePlayers.length > 2000) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> PlayerFinder.doLargeOfflineCachingWork(this, offlinePlayers));
         }
         Util.debugLog("Now using display-type: " + AbstractDisplayItem.getNowUsing().name());
         getLogger().info("QuickShop Loaded! " + enableTimer.stopAndGetTimePassed() + " ms.");
@@ -1107,7 +1195,14 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
                 String port = dbCfg.getString("port");
                 String database = dbCfg.getString("database");
                 boolean useSSL = dbCfg.getBoolean("usessl");
-                dbCore = new MySQLCore(this, Objects.requireNonNull(host, "MySQL host can't be null"), Objects.requireNonNull(user, "MySQL username can't be null"), Objects.requireNonNull(pass, "MySQL password can't be null"), Objects.requireNonNull(database, "MySQL database name can't be null"), Objects.requireNonNull(port, "MySQL port can't be null"), useSSL);
+                Map<String, String> optionsMap = new HashMap<>();
+                for (String options : dbCfg.getStringList("mysql-connect-options")) {
+                    String[] strings = options.split("=", 2);
+                    if (strings.length == 2) {
+                        optionsMap.put(strings[0], strings[1]);
+                    }
+                }
+                dbCore = new MySQLCore(this, Objects.requireNonNull(host, "MySQL host can't be null"), Objects.requireNonNull(user, "MySQL username can't be null"), Objects.requireNonNull(pass, "MySQL password can't be null"), Objects.requireNonNull(database, "MySQL database name can't be null"), Objects.requireNonNull(port, "MySQL port can't be null"), useSSL, optionsMap);
             } else {
                 // SQLite database - Doing this handles file creation
                 dbCore = new SQLiteCore(this, new File(this.getDataFolder(), "shops.db"));
@@ -2107,6 +2202,29 @@ public class QuickShop extends JavaPlugin implements QuickShopAPI {
         }
         if (selectedVersion == 157) {
             getConfig().set("shop.refund-from-tax-account-as-much-as-possible", false);
+            getConfig().set("config-version", ++selectedVersion);
+        }
+        if (selectedVersion == 158) {
+            getConfig().set("integration.lands.delete-on-land-deleted", false);
+            getConfig().set("integration.lands.delete-on-land-expired", false);
+            getConfig().set("config-version", ++selectedVersion);
+        }
+        if (selectedVersion == 159) {
+            getConfig().set("integration.superiorskyblock.whitelist-mode", true);
+            getConfig().set("integration.superiorskyblock.create-privilege-needs-list", new ArrayList<>());
+            getConfig().set("integration.superiorskyblock.trade-privilege-needs-list", new ArrayList<>());
+            getConfig().set("config-version", ++selectedVersion);
+        }
+        if (selectedVersion == 160) {
+            getConfig().set("shop.create-needs-select-type", false);
+            getConfig().set("config-version", ++selectedVersion);
+        }
+        if (selectedVersion == 161) {
+            getConfig().set("database.mysql-connect-options", new ArrayList<>(Arrays.asList("autoReconnect=true", "useUnicode=true", "characterEncoding=utf8")));
+            getConfig().set("config-version", ++selectedVersion);
+        }
+        if (selectedVersion == 161) {
+            getConfig().set("include-offlineplayer-for-command", false);
             getConfig().set("config-version", ++selectedVersion);
         }
         if (getConfig().isSet("shop.shop")) {

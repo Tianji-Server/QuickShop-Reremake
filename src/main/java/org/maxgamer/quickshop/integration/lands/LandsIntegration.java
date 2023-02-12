@@ -19,8 +19,10 @@
 
 package org.maxgamer.quickshop.integration.lands;
 
+import me.angeschossen.lands.api.events.LandDeleteEvent;
 import me.angeschossen.lands.api.events.LandUntrustPlayerEvent;
 import me.angeschossen.lands.api.events.PlayerLeaveLandEvent;
+import me.angeschossen.lands.api.events.land.DeleteReason;
 import me.angeschossen.lands.api.land.Land;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -40,8 +42,15 @@ import org.maxgamer.quickshop.util.logging.container.ShopRemoveLog;
 import org.maxgamer.quickshop.util.reload.ReloadResult;
 import org.maxgamer.quickshop.util.reload.ReloadStatus;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 @IntegrationStage
 public class LandsIntegration extends AbstractQSIntegratedPlugin implements Listener {
@@ -50,6 +59,8 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
     private boolean whitelist;
     private me.angeschossen.lands.api.integration.LandsIntegration landsIntegration;
     private boolean deleteWhenLosePermission;
+    private boolean deleteWhenLandDeleted;
+    private boolean deleteWhenLandExpired;
 
     public LandsIntegration(QuickShop plugin) {
         super(plugin);
@@ -62,6 +73,8 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
         ignoreDisabledWorlds = plugin.getConfig().getBoolean("integration.lands.ignore-disabled-worlds");
         whitelist = plugin.getConfig().getBoolean("integration.lands.whitelist-mode");
         deleteWhenLosePermission = plugin.getConfig().getBoolean("integration.lands.delete-on-lose-permission");
+        deleteWhenLandDeleted = plugin.getConfig().getBoolean("integration.lands.delete-on-land-deleted");
+        deleteWhenLandExpired = plugin.getConfig().getBoolean("integration.lands.delete-on-land-expired");
     }
 
     @Override
@@ -74,7 +87,8 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
         if (landsIntegration.getLandWorld(location.getWorld()) == null) {
             return ignoreDisabledWorlds;
         }
-        Land land = landsIntegration.getLand(location);
+        org.bukkit.Chunk chunk = location.getChunk();
+        Land land = landsIntegration.getLand(chunk.getWorld(), chunk.getX(), chunk.getZ());
         if (land != null) {
             return land.getOwnerUID().equals(player.getUniqueId()) || land.isTrusted(player.getUniqueId());
         } else {
@@ -91,14 +105,35 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLandsDelete(LandDeleteEvent event) {
+        @NotNull DeleteReason reason = event.getReason();
+        if (reason != me.angeschossen.lands.api.events.land.DeleteReason.CAMP_EXPIRED) {
+            if (!deleteWhenLandDeleted) {
+                return;
+            }
+        } else if (!deleteWhenLandExpired) {
+            return;
+        }
+        Land land = event.getLand();
+        Set<UUID> uuids = new HashSet<>(land.getTrustedPlayers());
+        uuids.add(land.getOwnerUID());
+        deleteShopInLand(event.getLand(), uuids, reason == DeleteReason.CAMP_EXPIRED ? Reason.EXPIRED : Reason.DELETED);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onLandsPermissionChanges(LandUntrustPlayerEvent event) {
         if (!deleteWhenLosePermission) {
             return;
         }
-        deleteShopInLand(event.getLand(), event.getTarget());
+        deleteShopInLand(event.getLand(), event.getTargetUID(), Reason.UNTRUSTED);
     }
 
-    private void deleteShopInLand(Land land, UUID target) {
+    private void deleteShopInLand(Land land, UUID target, Reason reason) {
+        deleteShopInLand(land, Collections.singleton(target), reason);
+    }
+
+    private void deleteShopInLand(Land land, Collection<UUID> targets, Reason reason) {
+        final Collection<UUID> finalTargets = new CopyOnWriteArrayList<>(targets);
         //Getting all shop with world-chunk-shop mapping
         for (Map.Entry<String, Map<ShopChunk, Map<Location, Shop>>> entry : plugin.getShopManager().getShops().entrySet()) {
             //Matching world
@@ -110,12 +145,14 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
                     if (land.hasChunk(world, shopChunk.getX(), shopChunk.getZ())) {
                         //Matching Owner and delete it
                         Map<Location, Shop> shops = chunkedShopEntry.getValue();
-                        for (Shop shop : shops.values()) {
-                            if (target.equals(shop.getOwner())) {
-                                plugin.logEvent(new ShopRemoveLog(Util.getNilUniqueId(), "[Lands Integration] Untrusted", shop.saveToInfoStorage()));
-                                Util.mainThreadRun(shop::delete);
+                        List<Shop> shopToRemove = new CopyOnWriteArrayList<>(shops.values()).parallelStream().filter(shop -> finalTargets.contains(shop.getOwner())).collect(Collectors.toList());
+                        Util.mainThreadRun(() -> {
+                            final String reasonStr = "[Lands Integration] " + reason.message;
+                            for (Shop shop : shopToRemove) {
+                                plugin.logEvent(new ShopRemoveLog(Util.getNilUniqueId(), reasonStr, shop.saveToInfoStorage()));
+                                shop.delete();
                             }
-                        }
+                        });
                     }
                 }
             }
@@ -127,7 +164,19 @@ public class LandsIntegration extends AbstractQSIntegratedPlugin implements List
         if (!deleteWhenLosePermission) {
             return;
         }
-        deleteShopInLand(event.getLand(), event.getLandPlayer().getUID());
+        deleteShopInLand(event.getLand(), event.getLandPlayer().getUID(), Reason.LEAVED);
+    }
+
+    private enum Reason {
+        UNTRUSTED("Land member was untrusted"),
+        LEAVED("Land member was leave"),
+        DELETED("Land was deleted"),
+        EXPIRED("Land was expired");
+        final String message;
+
+        Reason(String message) {
+            this.message = message;
+        }
     }
 
     @Override
