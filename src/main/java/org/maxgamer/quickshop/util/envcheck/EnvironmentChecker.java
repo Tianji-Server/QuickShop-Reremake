@@ -187,50 +187,6 @@ public final class EnvironmentChecker {
         }
     }
 
-    @EnvCheckEntry(name = "Plugin Manifest Check", priority = 1, stage = {EnvCheckEntry.Stage.ON_LOAD, EnvCheckEntry.Stage.ON_ENABLE})
-    public ResultContainer manifestCheck() {
-        String mainClass = plugin.getDescription().getMain();
-        if(!mainClass.equals("org.maxgamer.quickshop.QuickShop")){
-            this.reportMaker.manifestModified(plugin.getDescription());
-            plugin.getLogger().warning("ALERT: Detected main class has been modified!");
-            plugin.getLogger().warning("Should be: org.maxgamer.quickshop.QuickShop");
-            plugin.getLogger().warning("Actually: "+mainClass);
-            return new ResultContainer(CheckResult.KILL_SERVER, "Failed to validate main class! Security may be compromised!");
-
-        }
-        return new ResultContainer(CheckResult.PASSED, "Check passed.");
-    }
-
-    @EnvCheckEntry(name = "Potential Infection Characteristics Check", priority = 1, stage = {EnvCheckEntry.Stage.ON_LOAD, EnvCheckEntry.Stage.ON_ENABLE})
-    public ResultContainer potentialCheck() {
-        String jarPath = this.getClass().getProtectionDomain().getCodeSource().getLocation().getFile();
-        try {
-            jarPath = URLDecoder.decode(jarPath, "UTF-8");
-            Util.debugLog("JarPath selected: " + jarPath);
-            ZipFile zipFile = new ZipFile(jarPath);
-            Enumeration<? extends ZipEntry> zipEntryEnumeration = zipFile.entries();
-            boolean found = false;
-            while(zipEntryEnumeration.hasMoreElements()){
-                ZipEntry entry = zipEntryEnumeration.nextElement();
-                if(entry.getName().startsWith("javassist") || entry.getName().startsWith(".")){
-                    found = true;
-                    this.reportMaker.potentialInfected(entry);
-                    plugin.getLogger().log(Level.WARNING, "Potential Infection Detected:");
-                    plugin.getLogger().log(Level.WARNING, "File: "+entry.getName());
-                    plugin.getLogger().log(Level.WARNING, "CRC: "+entry.getCrc());
-                    plugin.getLogger().log(Level.WARNING, "Time: "+entry.getTime());
-                }
-            }
-            if(found){
-                plugin.getLogger().log(Level.WARNING, "ALERT: QuickShop detected Potential Infection, this jar may already infected by malware, stop the server and create full server backup immediately, run virus scan and contact the QuickShop support if you need!");
-                return new ResultContainer(CheckResult.KILL_SERVER, "Potential Infection detected, Killing server process...");
-            }
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "ALERT: QuickShop cannot validate itself. This may be caused by you having deleted QuickShop's jar while the server is running.", e);
-            return new ResultContainer(CheckResult.KILL_SERVER, "Failed to validate files in jar! Security may be compromised!");
-        }
-        return new ResultContainer(CheckResult.PASSED, "Check passed.");
-    }
 
 
     @SneakyThrows
