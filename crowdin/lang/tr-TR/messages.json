@@ -38,7 +38,7 @@
   "select-shop-type-or-cancel-selling-button": "[Satıyor]",
   "select-shop-type-or-cancel-buying-button": "[Alıyor]",
   "select-shop-type-or-cancel-cancel-button": "[İptal]",
-  "not-a-valid-shop-type": "&cYou can only input Buy/Sell/Cancel, your input was {0}.",
+  "not-a-valid-shop-type": "&cSadece Buy/Sell/Cancel (Alış/Sat/İptal) girebilirsiniz, girişiniz {0}.",
   "negative-amount": "&cNegatif miktarlarda işlem yapamazsın",
   "not-a-number": "&cGirdi sadece sayı olabilir, senin girdin {0} idi.",
   "exceeded-maximum": "&cDeğer, Java'nın maksimum değerini aştı.",
@@ -70,6 +70,7 @@
   "unknown-owner": "Bilinmiyor",
   "owner-bypass-check": "&eBütün kontroller atlandı. Ticaret başarılı! (Market sahibisin!)",
   "reached-maximum-can-create": "&cZaten maksimum {0}/{1} market oluşturdun!",
+  "reached-maximum-other-can-hold": "&cTarget player has reached the maximum of {0}/{1} shops!",
   "restricted-prices": "&c{0} için sınırlandırılmış fiyat: Min {1}, Maks {2}",
   "no-enough-money-to-keep-shops": "&cMarketlerini açık tutacak kadar paran yoktu! Bütün marketlerin kaldırıldı...",
   "nothing-to-flush": "&aYeni market mesajınız yok.",
@@ -79,7 +80,7 @@
   "warn-to-paste": "&eVeriler toplanıyor ve Pastebin'e yükleniyor, bu biraz zaman alabilir. &c&lUyarı&c, Veriler bir hafta boyunca herkese açık tutulur, sunucu konfigürasyonunuzu ve diğer hassas bilgilerinizi sızdırabilir, sadece &lgüvendiğiniz personele/geliştiriciye &c göderdiğinizden emin olun.",
   "price-too-high": "&cMarket fiyatı çok yüksek! {0} fiyatından yüksek bir tane oluşturamazsınız.",
   "you-cant-create-shop-in-there": "&cBurada bir market oluşturma izniniz yok.",
-  "unknown-player": "&cTarget player doesn't existed or not online, please check the username you typed.",
+  "unknown-player": "&cTarget oynatıcı çevrimiçi değil veya mevcut değil, lütfen yazdığınız kullanıcı adını kontrol edin.",
   "shop-staff-cleared": "&aBaşarıyla marketinizin bütün personelleri kadırıldı.",
   "shop-staff-added": "&a{0} başarıyla market personellerinize eklendi.",
   "shop-staff-deleted": "&a{0} başarıyla market personellerinizden kaldırıldı.",
@@ -247,7 +248,7 @@
     "freeze-hover": "&eMarketin dondurulma durumunu değiştir.",
     "toggledisplay": "&eGösterilen Eşya: &b{0} &e[&d&lDeğiştir&e]",
     "toggledisplay-hover": "&eMağazanın hologramının durumunu değiştir",
-    "staff": "&aStaff amount: &b{0} &e[&d&lModify&e]"
+    "staff": "&aPersonel miktarı: &b{0} &e[&d&lDeğiştir&e]"
   },
   "tableformat": {
     "full_line": "+---------------------------------------------------+",

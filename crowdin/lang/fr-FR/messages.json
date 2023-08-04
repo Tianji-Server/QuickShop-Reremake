@@ -1,5 +1,5 @@
 {
-  "_comment": "Bonjour traducteur ! Si vous éditez ceci à partir de Github ou à partir du code source, vous devriez aller sur https://crowdin.com/project/quickshop-reremake",
+  "_comment": "Hey traducteur! Si vous éditez ceci à partir de Github ou à partir du code source, vous devriez aller sur https://crowdin.com/project/quickshop-reremake",
   "file-test": "Ceci est un fichier texte de test. Nous l'utilisons pour tester si les messages sont cassés. Vous pouvez le remplir avec n'importe quel \"easter eggs\" que vous aimez ici :)",
   "translation-author": "&cYou only have room for {0} more",
   "translation-version": "Version suportée: Reremake",
@@ -70,6 +70,7 @@
   "unknown-owner": "Inconnu",
   "owner-bypass-check": "&eVérifications passées. Echange réussi ! (Tu es propriétaire de la boutique!)",
   "reached-maximum-can-create": "&cTu as atteint ton nombre de coffre de boutiques maximal : {0}/{1}!",
+  "reached-maximum-other-can-hold": "&cTarget player has reached the maximum of {0}/{1} shops!",
   "restricted-prices": "&cPrix restreints {0}: min {1}, max {2}",
   "no-enough-money-to-keep-shops": "&cTu n'as plus assez d'argent pour garder tes boutiques! Tous tes coffres ont été supprimés...",
   "nothing-to-flush": "&aAucun nouveau message.",
