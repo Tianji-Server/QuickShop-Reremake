@@ -29,8 +29,7 @@ jobs:
       #        run: mvn -B install --file src/integration/plotsquared/5/pom.xml
       - name: Build with Maven
         run: mvn -B test --file pom.xml -Pdebug
-      - name: Jar
+      - name: upload jar
         uses: actions/upload-artifact@v3
         with:
-          name: QuickShop-Reremake
-          path: build/libs
+          name: QuickShop
