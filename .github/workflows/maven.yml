@@ -33,3 +33,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: QuickShop
+          path: |
+            **/target/*.jar
