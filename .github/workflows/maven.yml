@@ -10,9 +10,9 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ "master","ignore-display-messages" ]
+    branches: [ "master", "ignore-display-messages" ]
   pull_request:
-    branches: [ "master","ignore-display-messages" ]
+    branches: [ "master", "ignore-display-messages" ]
 
 jobs:
   build:
