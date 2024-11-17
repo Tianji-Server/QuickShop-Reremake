@@ -493,7 +493,7 @@ plugin:
   #This will throw an exception and automatically repair the shops.
   Multiverse-Core: true
   #If you have OpenInv, QuickShop will enable the EnderChest feature for shop-blocks.
-  OpenInv: false
+  OpenInv: true
   #If you have PlaceHolderAPI, QuickShop will use it to process all messages.
   PlaceHolderAPI: true
   #If you have LWC/LWCX, QuickShop will check access.
