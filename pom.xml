@@ -529,13 +529,13 @@
         <!--                    <artifactId>TNELib</artifactId>-->
         <!--                </exclusion>-->
         <!--            </exclusions>-->
-        <!--        </dependency>-->
+        <!--        </dependency>
         <dependency>
             <groupId>com.github.jikoo.OpenInv</groupId>
             <artifactId>openinvapi</artifactId>
             <version>4.4.3</version>
-            <scope>provided</scope>
-        </dependency>
+            <scope>provided</scope> 
+        </dependency> -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
