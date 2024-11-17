@@ -311,6 +311,9 @@ public final class EnvironmentChecker {
 
     @EnvCheckEntry(name = "Virtual DisplayItem Support Test", priority = 7)
     public ResultContainer virtualDisplaySupportTest() {
+        if(!plugin.isDisplayEnabled()) {
+            return new ResultContainer(CheckResult.PASSED, "The setting shop.display-items is disabled.");
+          }
         String nmsVersion = ReflectFactory.getNMSVersion();
         GameVersion gameVersion = GameVersion.get(nmsVersion);
         Throwable throwable;
