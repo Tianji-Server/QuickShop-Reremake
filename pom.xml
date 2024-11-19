@@ -534,7 +534,8 @@
             <groupId>com.github.jikoo.OpenInv</groupId>
             <artifactId>openinvapi</artifactId>
             <version>4.4.3</version>
-            <scope>provided</scope>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/OpenInv.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
